@@ -13,6 +13,7 @@ contract Voting {
         string name;
         string proposal;
         uint voteCount;
+        address ethAddress; // Add Ethereum address field
     }
 
     // Define the Voter struct to store voter details
@@ -71,46 +72,48 @@ contract Voting {
     }
 
     // Function to add a new candidate to the election
-    function addCandidate(string memory _name, string memory _proposal) public onlyOwner onlyBeforeElection {
+    function addCandidate(string memory _name, string memory _proposal, address _owner) public onlyOwner onlyBeforeElection {
         candidatesCount++;
-        candidates[candidatesCount] = Candidate(candidatesCount, _name, _proposal, 0);
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, _proposal, 0, _owner); // Change to use owner's address
         emit CandidateAdded(candidatesCount, _name, _proposal);
     }
 
     // Function to add a new voter to the election
-    function addVoter(string memory _name, address _voterAddress) public onlyOwner onlyBeforeElection {
+    function addVoter(string memory _name, address _voterAddress, address _owner) public onlyOwner onlyBeforeElection {
         require(voters[_voterAddress].voted == false, "Voter has already voted");
+        require(_owner == owner, "Only the owner can add voters");
         votersCount++;
         voters[_voterAddress] = Voter(_name, address(0), 0, false);
         emit VoterAdded(_voterAddress);
     }
 
     // Function to start the election
-    function startElection() public onlyOwner onlyBeforeElection {
+    function startElection(address _owner) public onlyBeforeElection {
+        owner = _owner;
         electionState = ElectionState.ONGOING;
-        emit ElectionStarted(owner);
+        emit ElectionStarted(_owner);
     }
 
     // Function for a voter to cast their vote for a candidate
-    function castVote(uint _candidateId) public onlyDuringElection {
-        Voter storage sender = voters[msg.sender];
+    function castVote(uint _candidateId, address _voterAddress) public onlyDuringElection {
+        Voter storage sender = voters[_voterAddress];
         require(!sender.voted, "You have already voted");
         require(_candidateId > 0 && _candidateId <= candidatesCount, "Invalid candidate ID");
         sender.voted = true;
         sender.vote = _candidateId;
         candidates[_candidateId].voteCount++;
-        emit VoteCast(msg.sender, _candidateId);
+        emit VoteCast(_voterAddress, _candidateId);
     }
 
     // Function for a voter to delegate their vote to another address
-    function delegateVote(address _delegate) public onlyDuringElection {
+    function delegateVote(address _delegate, address _voterAddress) public onlyDuringElection {
         require(_delegate != address(0), "Invalid delegate address");
         require(msg.sender != _delegate, "You cannot delegate your vote to yourself");
-        Voter storage sender = voters[msg.sender];
+        Voter storage sender = voters[_voterAddress];
         require(!sender.voted, "You have already voted");
         while (voters[_delegate].delegate != address(0)) {
             _delegate = voters[_delegate].delegate;
-            require(_delegate != msg.sender, "Loop in delegation detected");
+            require(_delegate != _voterAddress, "Loop in delegation detected");
         }
         sender.voted = true;
         sender.delegate = _delegate;
@@ -118,8 +121,8 @@ contract Voting {
         if (delegateTo.voted) {
             candidates[delegateTo.vote].voteCount++;
         }
-        emit DelegateVote(msg.sender, _delegate);
-    }
+        emit DelegateVote(_voterAddress, _delegate);
+    }    
 
     // Function to end the election
     function endElection() public onlyOwner onlyDuringElection {
