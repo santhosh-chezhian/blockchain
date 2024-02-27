@@ -72,16 +72,16 @@ contract Voting {
     }
 
     // Function to add a new candidate to the election
-    function addCandidate(string memory _name, string memory _proposal, address _owner) public onlyOwner onlyBeforeElection {
+    function addCandidate(string memory _name, string memory _proposal) public onlyOwner onlyBeforeElection {
         candidatesCount++;
-        candidates[candidatesCount] = Candidate(candidatesCount, _name, _proposal, 0, _owner); // Change to use owner's address
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, _proposal, 0, owner); // Change to use owner's address
         emit CandidateAdded(candidatesCount, _name, _proposal);
     }
 
     // Function to add a new voter to the election
-    function addVoter(string memory _name, address _voterAddress, address _owner) public onlyOwner onlyBeforeElection {
+    function addVoter(string memory _name, address _voterAddress) public onlyOwner onlyBeforeElection {
         require(voters[_voterAddress].voted == false, "Voter has already voted");
-        require(_owner == owner, "Only the owner can add voters");
+        require(owner == owner, "Only the owner can add voters");
         votersCount++;
         voters[_voterAddress] = Voter(_name, address(0), 0, false);
         emit VoterAdded(_voterAddress);
@@ -131,7 +131,7 @@ contract Voting {
     }
 
     // Function to determine the winner of the election
-    function getWinner() public view onlyAfterElection returns (uint, string memory, uint) {
+    function showWinner() public view onlyAfterElection returns (uint, string memory, uint) {
         uint winningVoteCount = 0;
         uint winningCandidateId;
         for (uint i = 1; i <= candidatesCount; i++) {
